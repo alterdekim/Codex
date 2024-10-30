@@ -10,12 +10,11 @@ main = do
     print (_extractExpression x) -}
 
 main = do
-    handle <- openFile "../../../../../../../../../as/test.as" ReadMode
+    handle <- openFile "as/test.as" ReadMode
     contents <- hGetContents handle
     let x = tokenize contents
     print x
     --let y = parseIntoTree x
-    --print y
     --print $ findFirstEmpty x 0
     --print $ take (findFirstEmpty x 0) x
     --print $ makeInt x
