@@ -1,11 +1,14 @@
-var a:int = 10;
-var b:int = 5;
-var result:int = a * b + 2;
-trace(result);
+package {
+    import flash.text.TextField;
+    import flash.display.Sprite;
 
-var age:int = 20;
-if (age >= 18) {
-    trace("Adult");
-} else {
-    trace("Minor");
+    public class TextHello extends Sprite {
+        public function TextHello() {
+            var tf:TextField = new TextField();
+            tf.text = "Hello World!"
+            tf.x = 50;
+            tf.y = 40;
+            addChild(tf);
+        }
+    }
 }

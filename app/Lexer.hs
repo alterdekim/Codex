@@ -1,15 +1,14 @@
-module Lexer (tokenize, Token (..), TokenType (..), TrailType (..), TrailRule (..) ) where
+module Lexer (tokenize, Token (..), TokenType (..) ) where
 
 import Data.List
 import Data.Char (ord)
 
-data TrailType = OnlyDigits | LettersOrDigits | OnlySpecial deriving (Show, Eq)
 data TokenType = Quotes | Dot | Comma | Colon | EndStatement | EOF | QString | Numeric | Literal | Digit | Assignment | OpenParen | CloseParen | OpenCurved | CloseCurved | OpenSquared | CloseSquared | Arithmetic | Comparison | Bitwise | Empty deriving (Show, Eq)
 data Token = Token {value :: [Char], token_type :: TokenType} deriving (Show)
-data TrailRule = TrailRule {rule_val :: [Char], trail_type :: TrailType} deriving (Show)
 
-parseSingleToken :: [Char] -> Token
-parseSingleToken code
+-- makes token from single char
+parseSingleToken :: Char -> Token
+parseSingleToken c
     | c == '(' = Token [c] OpenParen
     | c == ')' = Token [c] CloseParen
     | c == '{' = Token [c] OpenCurved
@@ -23,35 +22,61 @@ parseSingleToken code
     | c == ';' = Token [c] EndStatement
     | c == ':' = Token [c] Colon
     | c == '.' = Token [c] Dot
-    | c == '\'' = Token [c] Quotes
+    | c == '"' = Token [c] Quotes
     | c == ',' = Token [c] Comma
-    | elem c ['0'..'9'] = Token code Numeric
-    | elem c $ ['a'..'z'] ++ ['A'..'Z'] = Token code Literal
+    | elem c ['0'..'9'] = Token [c] Numeric
+    | elem c $ ['a'..'z'] ++ ['A'..'Z'] ++ ['_'] = Token [c] Literal
     | otherwise = Token " " Empty
-    where c = head code
 
--- shall return [Token]
+-- makes tokens from every char of code.
+makeTokenFromEveryChar :: [Char] -> [Token]
+makeTokenFromEveryChar code = map (\c -> parseSingleToken c) code
+
+-- entry point, which should be called to start lexer.
 tokenize :: [Char] -> [Token]
-tokenize sourceCode
-    | elem f ['0'..'9'] = parseRule t $ TrailRule [f] OnlyDigits
-    | elem f $ ['a'..'z'] ++ ['A'..'Z'] = parseRule t $ TrailRule [f] LettersOrDigits
-    | otherwise = parseRule t $ TrailRule [f] OnlySpecial
-    where f = head sourceCode
-          t = tail sourceCode
+tokenize sourceCode = excludeEmpty (checkFor (reduceTokens $ makeTokenFromEveryChar sourceCode))
 
-joinTokens :: (Token, [Char]) -> [Token]
-joinTokens t = (fst t):(tokenize $ snd t)
+excludeEmpty :: [Token] -> [Token]
+excludeEmpty t = filter (\c -> (token_type c) /= Empty) t
 
-parseRule :: [Char] -> TrailRule -> [Token]
-parseRule code rule
-    | tt == OnlyDigits = joinTokens $ parseDigitsRule code rule
-    | otherwise = []
-    where tt = trail_type rule
+-- another helper method, which makes an integer array with the size of Tokens array
+getByMod :: [Token] -> Int -> [Int]
+getByMod t n = filter (\c -> c `mod` 2 == n) [0..((length t)-1)]
 
-parseDigitsRule :: [Char] -> TrailRule -> (Token, [Char])
-parseDigitsRule code rule
-    | elem c ['0'..'9'] = parseDigitsRule t $ TrailRule (c:rv) OnlyDigits
-    | otherwise = parseSingleToken rv code
-    where rv = rule_val rule
-          c  = head code
-          t  = tail code
+-- helper method, which extracts only odd/even tokens from list (needed for reducer)
+getTokensByMod :: [Token] -> Int -> [Token]
+getTokensByMod t n = map (\c -> t !! c ) (getByMod t n)
+
+reducerGuard :: [Token] -> [Token] -> [Token]
+reducerGuard et ot = if length et == 0 || length ot == 0 then et++ot else reducerItself et ot
+
+-- reducer itself
+reducerItself :: [Token] -> [Token] -> [Token]
+reducerItself et ot
+    | h == Literal && ( g == Literal || g == Numeric ) = (Token ((value e)++(value o)) Literal):(reducerGuard (tail et) (tail ot))
+    | otherwise = [e,o]++(reducerGuard (tail et) (tail ot))
+    where e = head et
+          o = head ot
+          h = token_type e
+          g = token_type o
+
+-- method, which used for reducing token amout (actually to specify some tokens e.g. ! = -> !=)
+reduceTokens :: [Token] -> [Token]
+reduceTokens t = reducerItself (getTokensByMod t 0) (getTokensByMod t 1)
+
+hasGuard :: [Token] -> [Token] -> Bool
+hasGuard et ot = if length et == 0 || length ot == 0 then False else hasItself et ot
+
+-- method that help checks
+hasItself :: [Token] -> [Token] -> Bool
+hasItself et ot
+    | h == Literal && ( g == Literal || g == Numeric ) = True
+    | otherwise = hasGuard (tail et) (tail ot)
+    where e = head et
+          o = head ot
+          h = token_type e
+          g = token_type o
+
+-- method that checks if there are equal Literals and Numerics
+checkFor :: [Token] -> [Token]
+checkFor t = if hasItself (getTokensByMod t 0) (getTokensByMod t 1) then checkFor (reduceTokens t) else t
