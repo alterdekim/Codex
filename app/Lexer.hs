@@ -3,6 +3,8 @@ module Lexer (tokenize, Token (..), TokenType (..) ) where
 import Data.List
 import Data.Char (ord)
 
+import Debug.Trace;
+
 data TokenType = Quotes | Dot | Comma | Colon | EndStatement | EOF | QString | Numeric | Literal | Digit | Assignment | OpenParen | CloseParen | OpenCurved | CloseCurved | OpenSquared | CloseSquared | Arithmetic | Comparison | Bitwise | Empty deriving (Show, Eq)
 data Token = Token {value :: [Char], token_type :: TokenType} deriving (Show)
 
@@ -34,7 +36,7 @@ makeTokenFromEveryChar code = map (\c -> parseSingleToken c) code
 
 -- entry point, which should be called to start lexer.
 tokenize :: [Char] -> [Token]
-tokenize sourceCode = excludeEmpty (checkFor (reduceTokens $ makeTokenFromEveryChar sourceCode))
+tokenize sourceCode = excludeEmpty (checkFor (makeTokenFromEveryChar sourceCode))
 
 excludeEmpty :: [Token] -> [Token]
 excludeEmpty t = filter (\c -> (token_type c) /= Empty) t
@@ -47,36 +49,41 @@ getByMod t n = filter (\c -> c `mod` 2 == n) [0..((length t)-1)]
 getTokensByMod :: [Token] -> Int -> [Token]
 getTokensByMod t n = map (\c -> t !! c ) (getByMod t n)
 
-reducerGuard :: [Token] -> [Token] -> [Token]
-reducerGuard et ot = if length et == 0 || length ot == 0 then et++ot else reducerItself et ot
+reducerGuard :: [Token] -> Int -> [Token]
+--reducerGuard t i = if (length t) <= (trace ("Lol: " ++ (show (length t)) ++ " <= " ++ (show (i+1))) (i+1)) then [] else (reducerItself t i)
+reducerGuard t i
+    | l <= i = []
+    | l <= succ i = (last t):[]
+    | otherwise = reducerItself t i
+    where l = length t
 
 -- reducer itself
-reducerItself :: [Token] -> [Token] -> [Token]
-reducerItself et ot
-    | h == Literal && ( g == Literal || g == Numeric ) = (Token ((value e)++(value o)) Literal):(reducerGuard (tail et) (tail ot))
-    | otherwise = [e,o]++(reducerGuard (tail et) (tail ot))
-    where e = head et
-          o = head ot
+reducerItself :: [Token] -> Int -> [Token]
+reducerItself t i
+    | h == Literal && ( g == Literal || g == Numeric ) = (Token ((value e)++(value o)) Literal):(reducerGuard t (i+2))
+    | otherwise = e:(reducerGuard t (succ i))
+    where e = t !! i
+          o = t !! (succ i)
           h = token_type e
           g = token_type o
 
 -- method, which used for reducing token amout (actually to specify some tokens e.g. ! = -> !=)
 reduceTokens :: [Token] -> [Token]
-reduceTokens t = reducerItself (getTokensByMod t 0) (getTokensByMod t 1)
+reduceTokens t = reducerItself t 0
 
-hasGuard :: [Token] -> [Token] -> Bool
-hasGuard et ot = if length et == 0 || length ot == 0 then False else hasItself et ot
+hasGuard :: [Token] -> Int -> Bool
+hasGuard t i = if length t <= (succ i) then False else hasItself t i
 
 -- method that help checks
-hasItself :: [Token] -> [Token] -> Bool
-hasItself et ot
+hasItself :: [Token] -> Int -> Bool
+hasItself t i
     | h == Literal && ( g == Literal || g == Numeric ) = True
-    | otherwise = hasGuard (tail et) (tail ot)
-    where e = head et
-          o = head ot
+    | otherwise = hasGuard t (succ i)
+    where e = t !! i
+          o = t !! (succ i)
           h = token_type e
           g = token_type o
 
 -- method that checks if there are equal Literals and Numerics
 checkFor :: [Token] -> [Token]
-checkFor t = if hasItself (getTokensByMod t 0) (getTokensByMod t 1) then checkFor (reduceTokens t) else t
+checkFor t = if hasItself t 0 then checkFor (reduceTokens t) else t
