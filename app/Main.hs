@@ -2,7 +2,7 @@ module Main where
 
 import System.IO
 import Lexer
---import Parser
+import Parser
 
 {-
 main = do
