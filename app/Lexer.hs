@@ -5,7 +5,7 @@ import Data.Char (ord)
 
 import Debug.Trace;
 
-data TokenType = Quotes | Dot | Comma | Colon | EndStatement | EOF | QString | Numeric | Literal | Digit | Assignment | OpenParen | CloseParen | OpenCurved | CloseCurved | OpenSquared | CloseSquared | Arithmetic | Comparison | Bitwise | Empty deriving (Show, Eq)
+data TokenType = Quotes | Dot | Comma | Colon | EndStatement | Numeric | Literal | Assignment | OpenParen | CloseParen | OpenCurved | CloseCurved | OpenSquared | CloseSquared | Arithmetic | Comparison | Bitwise | Empty | SoftComp | CompositeAssign deriving (Show, Eq)
 data Token = Token {value :: [Char], token_type :: TokenType} deriving (Show)
 
 -- makes token from single char
@@ -61,6 +61,9 @@ reducerGuard t i
 reducerItself :: [Token] -> Int -> [Token]
 reducerItself t i
     | h == Literal && ( g == Literal || g == Numeric ) = (Token ((value e)++(value o)) Literal):(reducerGuard t (i+2))
+    | h == Numeric && (g == Numeric || g == Dot) = (Token ((value e)++(value o)) Numeric):(reducerGuard t (i+2))
+    | h == Comparison && g == Assignment = (Token ((value e)++(value o)) SoftComp):(reducerGuard t (i+2))
+    | (h == Arithmetic || h == Bitwise) && g == Assignment = (Token ((value e)++(value o)) CompositeAssign):(reducerGuard t (i+2))
     | otherwise = e:(reducerGuard t (succ i))
     where e = t !! i
           o = t !! (succ i)
@@ -78,6 +81,9 @@ hasGuard t i = if length t <= (succ i) then False else hasItself t i
 hasItself :: [Token] -> Int -> Bool
 hasItself t i
     | h == Literal && ( g == Literal || g == Numeric ) = True
+    | h == Numeric && ( g == Numeric || g == Dot ) = True
+    | h == Comparison && g == Assignment = True
+    | (h == Arithmetic || h == Bitwise) && g == Assignment = True
     | otherwise = hasGuard t (succ i)
     where e = t !! i
           o = t !! (succ i)
