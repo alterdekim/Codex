@@ -7,13 +7,13 @@ data StmtType = Void | VariableDeclaration | AssignmentExpression | BinaryExpres
 
 data TreeNode = TreeNode { stype :: StmtType, children :: [TreeNode], val :: [Char] } deriving (Show, Eq)
 
-parseTokens :: [Token] -> [TreeNode]
+parseTokens :: [Token] -> TreeNode
 parseTokens tt 
-    | k == VariableDeclaration = parseVariableDeclaration tt
+    | k == VarKeyword = parseVariableDeclaration tt
     | otherwise = TreeNode Void [] ""
     where t = head tt
           k = token_type t
 
 -- Keyword(var) Literal Colon Literal Assignment (Expression) EndStatement
 parseVariableDeclaration :: [Token] -> TreeNode
-parseVariableDeclaration tt = 
+parseVariableDeclaration tt = TreeNode VariableDeclaration [] []

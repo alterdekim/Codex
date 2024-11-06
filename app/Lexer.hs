@@ -5,7 +5,7 @@ import Data.Char (ord)
 
 import Debug.Trace;
 
-data TokenType = Quotes | Dot | Comma | Colon | EndStatement | Numeric | Literal | Assignment | OpenParen | CloseParen | OpenCurved | CloseCurved | OpenSquared | CloseSquared | Arithmetic | Comparison | Bitwise | Empty | SoftComp | CompositeAssign deriving (Show, Eq)
+data TokenType = Quotes | Dot | Comma | Colon | EndStatement | Numeric | Literal | Assignment | OpenParen | CloseParen | OpenCurved | CloseCurved | OpenSquared | CloseSquared | Arithmetic | Comparison | Bitwise | Empty | SoftComp | CompositeAssign | VarKeyword deriving (Show, Eq)
 data Token = Token {value :: [Char], token_type :: TokenType} deriving (Show)
 
 -- makes token from single char
@@ -36,7 +36,18 @@ makeTokenFromEveryChar code = map (\c -> parseSingleToken c) code
 
 -- entry point, which should be called to start lexer.
 tokenize :: [Char] -> [Token]
-tokenize sourceCode = excludeEmpty (checkFor (makeTokenFromEveryChar sourceCode))
+tokenize sourceCode = keyworder (excludeEmpty (checkFor (makeTokenFromEveryChar sourceCode)))
+
+keyworder :: [Token] -> [Token]
+keyworder t
+    | tv == "var" = (Token tv VarKeyword):(keyworderG tt)
+    | otherwise = th:(keyworderG tt)
+    where th = head t
+          tt = tail t
+          tv = value th
+
+keyworderG :: [Token] -> [Token]
+keyworderG t = if length t > 0 then keyworder t else []
 
 excludeEmpty :: [Token] -> [Token]
 excludeEmpty t = filter (\c -> (token_type c) /= Empty) t
