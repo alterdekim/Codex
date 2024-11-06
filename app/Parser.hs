@@ -1,22 +1,19 @@
 module Parser where
 
+import Control.Exception
 import Lexer (Token (..), TokenType (..) )
 
-data StmtType = Primary | Numeric deriving (Show, Eq)
+data StmtType = Void | VariableDeclaration | AssignmentExpression | BinaryExpression deriving (Show, Eq)
 
-class (Show a) => TreeNode a where
-    stype :: a -> StmtType
-    children :: a -> [a]
+data TreeNode = TreeNode { stype :: StmtType, children :: [TreeNode], val :: [Char] } deriving (Show, Eq)
 
-instance TreeNode StmtType where
-    stype Primary = Primary
-    children Primary = []
-
---data PrimaryNode = PrimaryNode { val :: [Char] } deriving (TreeNode)
-
-parseTokens :: [Token] -> TreeNode
-parseTokens tt
-    | k == Literal = PrimaryNode Primary [] (value t)
-    | otherwise = TreeNode Parser.Numeric []
+parseTokens :: [Token] -> [TreeNode]
+parseTokens tt 
+    | k == VariableDeclaration = parseVariableDeclaration tt
+    | otherwise = TreeNode Void [] ""
     where t = head tt
           k = token_type t
+
+-- Keyword(var) Literal Colon Literal Assignment (Expression) EndStatement
+parseVariableDeclaration :: [Token] -> TreeNode
+parseVariableDeclaration tt = 
